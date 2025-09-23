@@ -1,0 +1,16 @@
+{
+  "name": "micro-journaling",
+  "version": "1.0.0",
+  "description": "Micro Journaling - CLI tool for logging messages with timestamps",
+  "main": "index.js",
+  "bin": {
+    "mj": "./mj.js",
+    "mjr": "./mjr.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["cli", "logging", "timestamp", "journaling", "micro-journaling"],
+  "author": "",
+  "license": "ISC"
+}
