@@ -1,29 +1,10 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-
-function getLogFile() {
-  return path.join(os.homedir(), '.micro-journal.json');
-}
-
-function readLogs() {
-  const logFile = getLogFile();
-  try {
-    if (fs.existsSync(logFile)) {
-      const content = fs.readFileSync(logFile, 'utf8').trim();
-      return content ? JSON.parse(content) : [];
-    }
-    return [];
-  } catch (error) {
-    console.error('Error reading log file:', error.message);
-    return [];
-  }
-}
+const { listEntries } = require('./lib/journal');
+const http = require('http');
 
 function displayLastEntries() {
-  const logs = readLogs();
+  const logs = listEntries();
 
   logs.forEach((entry) => {
     const date = new Date(entry.timestamp);
@@ -38,30 +19,47 @@ function displayLastEntries() {
 }
 
 function logMessage(message) {
-  const logFile = getLogFile();
+  const source = {
+    app: "cli",
+    pwd: process.cwd()
+  };
 
-  try {
-    const logs = readLogs();
-    const nextId = logs.length > 0 ? Math.max(...logs.map(l => l.id || 0)) + 1 : 1;
+  const data = JSON.stringify({ message, source });
 
-    const logEntry = {
-      id: nextId,
-      timestamp: new Date().toISOString(),
-      message: message,
-      statuses: [],
-      source: {
-        app: "cli",
-        pwd: process.cwd()
+  const options = {
+    hostname: 'localhost',
+    port: 3000,
+    path: '/api/entries',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': data.length
+    }
+  };
+
+  const req = http.request(options, (res) => {
+    let responseData = '';
+    res.on('data', (chunk) => {
+      responseData += chunk;
+    });
+    res.on('end', () => {
+      if (res.statusCode === 201) {
+        // Success - entry created
+      } else {
+        console.error('Error creating entry:', responseData);
+        process.exit(1);
       }
-    };
+    });
+  });
 
-    logs.push(logEntry);
-
-    fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
-  } catch (error) {
-    console.error('Error writing to log file:', error.message);
+  req.on('error', (error) => {
+    console.error('Error connecting to server:', error.message);
+    console.error('Make sure the server is running (npm start)');
     process.exit(1);
-  }
+  });
+
+  req.write(data);
+  req.end();
 }
 
 const args = process.argv.slice(2);

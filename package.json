@@ -4,13 +4,38 @@
   "description": "Micro Journaling - CLI tool for logging messages with timestamps",
   "main": "index.js",
   "bin": {
-    "mj": "./mj.js",
-    "mjr": "./mjr.js"
+    "mj": "mj.js",
+    "mjr": "mjr.js"
   },
   "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js & cd web && npm run dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["cli", "logging", "timestamp", "journaling", "micro-journaling"],
+  "keywords": [
+    "cli",
+    "logging",
+    "timestamp",
+    "journaling",
+    "micro-journaling"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/noelr/micro-journaling.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/noelr/micro-journaling/issues"
+  },
+  "homepage": "https://github.com/noelr/micro-journaling#readme",
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
 }
