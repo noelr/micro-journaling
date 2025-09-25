@@ -1,45 +1,16 @@
 #!/usr/bin/env node
 
-const { listEntries } = require('./lib/journal');
-const http = require('http');
+const { listEntries, addStatuses } = require('./lib/journal');
+require('./lib/listeners/server-notifier');
 
 function applyStatuses(entryId, statusTypes) {
-  const data = JSON.stringify({ tags: statusTypes });
-
-  const options = {
-    hostname: 'localhost',
-    port: 3000,
-    path: `/api/entries/${entryId}/tags`,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': data.length
-    }
-  };
-
-  const req = http.request(options, (res) => {
-    let responseData = '';
-    res.on('data', (chunk) => {
-      responseData += chunk;
-    });
-    res.on('end', () => {
-      if (res.statusCode !== 200) {
-        const error = JSON.parse(responseData);
-        console.error('Error adding tags:', error.error || responseData);
-        process.exit(1);
-      }
-      // Success - tags added
-    });
-  });
-
-  req.on('error', (error) => {
-    console.error('Error connecting to server:', error.message);
-    console.error('Make sure the server is running (npm start)');
+  try {
+    addStatuses(entryId, statusTypes);
+    // Success - tags added
+  } catch (error) {
+    console.error('Error adding tags:', error.message);
     process.exit(1);
-  });
-
-  req.write(data);
-  req.end();
+  }
 }
 
 function displayEntriesWithoutStatus() {

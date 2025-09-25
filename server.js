@@ -3,14 +3,28 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const { createEntry, listEntries, getEntry, addStatuses, removeStatus, journalEvents } = require('./lib/journal');
+const { createEntry, listEntries, getEntry, addStatuses, removeStatus } = require('./lib/journal');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// SSE Client Management
+const sseClients = new Set();
+
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// SSE Broadcasting Function
+function broadcastSSE(eventType, data) {
+  const message = `data: ${JSON.stringify({ type: eventType, data })}\n\n`;
+
+  sseClients.forEach(client => {
+    if (!client.res.finished) {
+      client.res.write(message);
+    }
+  });
+}
 
 app.post('/api/entries', (req, res) => {
   try {
@@ -21,6 +35,10 @@ app.post('/api/entries', (req, res) => {
     }
 
     const entry = createEntry(message, source || { app: 'api', ip: req.ip });
+
+    // Broadcast to SSE clients
+    broadcastSSE('entry:created', entry);
+
     res.status(201).json(entry);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -78,6 +96,10 @@ app.post('/api/entries/:id/tags', (req, res) => {
     }
 
     const result = addStatuses(entryId, tags);
+
+    // Broadcast to SSE clients
+    broadcastSSE('entry:tagged', result);
+
     res.json({
       entry: result.entry,
       added: result.addedStatuses,
@@ -106,6 +128,10 @@ app.delete('/api/entries/:id/tags/:tag', (req, res) => {
     }
 
     const result = removeStatus(entryId, tag);
+
+    // Broadcast to SSE clients
+    broadcastSSE('entry:untagged', { entry: result.entry, removedTag: tag, removed: result.removed });
+
     res.json({
       entry: result.entry,
       removed: result.removed
@@ -123,9 +149,26 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Notification endpoint for CLI to server communication
+app.post('/api/notify', (req, res) => {
+  try {
+    const { eventType, data } = req.body;
+
+    if (!eventType || !data) {
+      return res.status(400).json({ error: 'eventType and data are required' });
+    }
+
+    // Broadcast directly to SSE clients
+    broadcastSSE(eventType, data);
+
+    res.json({ status: 'ok' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // SSE endpoint for real-time updates
 app.get('/api/events', (req, res) => {
-  // Set headers for SSE
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -133,38 +176,20 @@ app.get('/api/events', (req, res) => {
     'Access-Control-Allow-Origin': '*'
   });
 
-  // Send initial connection message
   res.write('data: {"type": "connected"}\n\n');
 
-  // Keep connection alive with heartbeat
   const heartbeat = setInterval(() => {
-    res.write('data: {"type": "heartbeat"}\n\n');
+    if (!res.finished) {
+      res.write('data: {"type": "heartbeat"}\n\n');
+    }
   }, 30000);
 
-  // Event handlers
-  const handleEntryCreated = (entry) => {
-    res.write(`data: ${JSON.stringify({ type: 'entry:created', data: entry })}\n\n`);
-  };
+  const client = { res, heartbeat };
+  sseClients.add(client);
 
-  const handleEntryTagged = ({ entry, addedStatuses }) => {
-    res.write(`data: ${JSON.stringify({ type: 'entry:tagged', data: { entry, addedStatuses } })}\n\n`);
-  };
-
-  const handleEntryUntagged = ({ entry, removedTag }) => {
-    res.write(`data: ${JSON.stringify({ type: 'entry:untagged', data: { entry, removedTag } })}\n\n`);
-  };
-
-  // Register event listeners
-  journalEvents.on('entry:created', handleEntryCreated);
-  journalEvents.on('entry:tagged', handleEntryTagged);
-  journalEvents.on('entry:untagged', handleEntryUntagged);
-
-  // Clean up on client disconnect
-  req.on('close', () => {
+  res.on('close', () => {
     clearInterval(heartbeat);
-    journalEvents.off('entry:created', handleEntryCreated);
-    journalEvents.off('entry:tagged', handleEntryTagged);
-    journalEvents.off('entry:untagged', handleEntryUntagged);
+    sseClients.delete(client);
   });
 });
 
@@ -178,5 +203,6 @@ app.listen(PORT, () => {
   console.log('  POST   /api/entries/:id/tags     - Add tags to entry');
   console.log('  DELETE /api/entries/:id/tags/:tag - Remove tag from entry');
   console.log('  GET    /api/health               - Health check');
+  console.log('  POST   /api/notify               - CLI notification endpoint');
   console.log('  GET    /api/events               - SSE endpoint for real-time updates');
 });

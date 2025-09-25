@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const { listEntries } = require('./lib/journal');
-const http = require('http');
+const { listEntries, createEntry } = require('./lib/journal');
+require('./lib/listeners/server-notifier');
 
 function displayLastEntries() {
   const logs = listEntries();
@@ -24,42 +24,13 @@ function logMessage(message) {
     pwd: process.cwd()
   };
 
-  const data = JSON.stringify({ message, source });
-
-  const options = {
-    hostname: 'localhost',
-    port: 3000,
-    path: '/api/entries',
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': data.length
-    }
-  };
-
-  const req = http.request(options, (res) => {
-    let responseData = '';
-    res.on('data', (chunk) => {
-      responseData += chunk;
-    });
-    res.on('end', () => {
-      if (res.statusCode === 201) {
-        // Success - entry created
-      } else {
-        console.error('Error creating entry:', responseData);
-        process.exit(1);
-      }
-    });
-  });
-
-  req.on('error', (error) => {
-    console.error('Error connecting to server:', error.message);
-    console.error('Make sure the server is running (npm start)');
+  try {
+    createEntry(message, source);
+    // Success - entry created
+  } catch (error) {
+    console.error('Error creating entry:', error.message);
     process.exit(1);
-  });
-
-  req.write(data);
-  req.end();
+  }
 }
 
 const args = process.argv.slice(2);
