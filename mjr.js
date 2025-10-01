@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const { listEntries, addStatuses } = require('./lib/journal');
-require('./lib/listeners/server-notifier');
 
 function applyStatuses(entryId, statusTypes) {
   try {

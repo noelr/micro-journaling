@@ -1,0 +1,45 @@
+# Dependencies
+node_modules
+web/node_modules
+
+# Build output
+web/dist
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+
+# Migrations
+migrations
+
+# PM2 (not needed in Docker)
+ecosystem.config.js
+
+# Deploy scripts (for PM2, not Docker)
+deploy.sh
+
+# Test files
+test
+*.test.js

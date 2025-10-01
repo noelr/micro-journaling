@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const { listEntries, createEntry } = require('./lib/journal');
-require('./lib/listeners/server-notifier');
+const { getDeviceName } = require('./lib/config');
 
 function displayLastEntries() {
   const logs = listEntries();
@@ -21,6 +21,7 @@ function displayLastEntries() {
 function logMessage(message) {
   const source = {
     app: "cli",
+    device: getDeviceName(),
     pwd: process.cwd()
   };
 

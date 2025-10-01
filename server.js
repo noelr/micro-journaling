@@ -3,10 +3,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const { createEntry, listEntries, getEntry, addStatuses, removeStatus } = require('./lib/journal');
+const path = require('path');
+const { createEntry, listEntries, getEntry, addStatuses } = require('./lib/journal');
+const { getDeviceName } = require('./lib/config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // SSE Client Management
 const sseClients = new Set();
@@ -14,6 +17,12 @@ const sseClients = new Set();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Serve static files in production
+if (NODE_ENV === 'production') {
+  const webDistPath = path.join(__dirname, 'web', 'dist');
+  app.use(express.static(webDistPath));
+}
 
 // SSE Broadcasting Function
 function broadcastSSE(eventType, data) {
@@ -34,7 +43,7 @@ app.post('/api/entries', (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    const entry = createEntry(message, source || { app: 'api', ip: req.ip });
+    const entry = createEntry(message, source || { app: 'api', device: getDeviceName() });
 
     // Broadcast to SSE clients
     broadcastSSE('entry:created', entry);
@@ -114,36 +123,10 @@ app.post('/api/entries/:id/tags', (req, res) => {
   }
 });
 
-app.delete('/api/entries/:id/tags/:tag', (req, res) => {
-  try {
-    const entryId = req.params.id;
-    const tag = req.params.tag;
-
-    if (!entryId || entryId.trim() === '') {
-      return res.status(400).json({ error: 'Invalid entry ID' });
-    }
-
-    if (!tag || tag.trim() === '') {
-      return res.status(400).json({ error: 'Tag is required' });
-    }
-
-    const result = removeStatus(entryId, tag);
-
-    // Broadcast to SSE clients
-    broadcastSSE('entry:untagged', { entry: result.entry, removedTag: tag, removed: result.removed });
-
-    res.json({
-      entry: result.entry,
-      removed: result.removed
-    });
-  } catch (error) {
-    if (error.message.includes('not found')) {
-      res.status(404).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: error.message });
-    }
-  }
-});
+// Remove tag endpoint temporarily disabled - only createEntry and tagEntry supported
+// app.delete('/api/entries/:id/tags/:tag', (req, res) => {
+//   res.status(501).json({ error: 'Remove tag functionality not implemented' });
+// });
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -193,8 +176,16 @@ app.get('/api/events', (req, res) => {
   });
 });
 
+// Serve index.html for all non-API routes in production (SPA fallback)
+if (NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'web', 'dist', 'index.html'));
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`Micro Journal API server running on http://localhost:${PORT}`);
+  console.log(`Environment: ${NODE_ENV}`);
   console.log('\nAPI Endpoints:');
   console.log('  POST   /api/entries              - Create new entry');
   console.log('  GET    /api/entries              - List all entries');
