@@ -38,7 +38,7 @@ COPY mjr.js ./
 COPY --from=web-builder /app/web/dist ./web/dist
 
 # Create a non-root user
-RUN addgroup -g 1000 appuser && adduser -D -u 1000 -G appuser appuser
+RUN adduser -D -u 1000 appuser
 
 # Create directory for data (will be mounted as volume)
 RUN mkdir -p /home/appuser/.micro-journal && chown -R appuser:appuser /home/appuser /app
