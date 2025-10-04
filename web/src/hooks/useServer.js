@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSSE } from './useSSE'
 
-const API_URL = 'http://localhost:3000/api'
+// Use relative URL in production, localhost in development
+const API_URL = import.meta.env.MODE === 'production'
+  ? '/api'
+  : 'http://localhost:3000/api'
 
 export function useServer() {
   const [items, setItems] = useState([])
