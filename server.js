@@ -178,7 +178,7 @@ app.get('/api/events', (req, res) => {
 
 // Serve index.html for all non-API routes in production (SPA fallback)
 if (NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
+  app.use((req, res) => {
     res.sendFile(path.join(__dirname, 'web', 'dist', 'index.html'));
   });
 }
