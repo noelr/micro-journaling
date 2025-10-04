@@ -1,7 +1,7 @@
 # Multi-stage build for micro-journal
 
 # Stage 1: Build web frontend
-FROM node:18-alpine AS web-builder
+FROM node:24-alpine3.21 AS web-builder
 
 WORKDIR /app/web
 
@@ -18,7 +18,7 @@ COPY web/ ./
 RUN npm run build
 
 # Stage 2: Production server
-FROM node:18-alpine
+FROM node:24-alpine3.21
 
 WORKDIR /app
 
