@@ -37,8 +37,14 @@ COPY mjr.js ./
 # Copy built web assets from builder stage
 COPY --from=web-builder /app/web/dist ./web/dist
 
+# Create a non-root user
+RUN addgroup -g 1000 appuser && adduser -D -u 1000 -G appuser appuser
+
 # Create directory for data (will be mounted as volume)
-RUN mkdir -p /root/.micro-journal
+RUN mkdir -p /home/appuser/.micro-journal && chown -R appuser:appuser /home/appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 3000

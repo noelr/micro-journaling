@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     volumes:
       # Mount data directory for persistence
-      - ${HOME}/.micro-journal:/root/.micro-journal
+      - ${HOME}/.micro-journal:/home/appuser/.micro-journal
     environment:
       - NODE_ENV=production
       - PORT=3000
